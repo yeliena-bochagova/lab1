@@ -6,11 +6,20 @@ class Map:
         self.height = height
         self.tiles = [[Tile() for _ in range(width)] for _ in range(height)]
 
-    def is_wall(self, x, y):
-        """Перевірка, чи є клітинка стіною"""
-        return self.tiles[y][x].is_wall
+    def load_map(self, filename):
+        with open(filename, 'r') as file:
+            lines = file.readlines()
+            self.height = len(lines)
+            self.width = len(lines[0].strip())
+            self.tiles = []
+            for line in lines:
+                row = []
+                for char in line.strip():
+                    if char == '1':
+                        row.append(Tile(is_wall=True))
+                    else:
+                        row.append(Tile(is_wall=False))
+                self.tiles.append(row)
 
-    def print_map(self):
-        """Друк карти в консоль"""
-        for row in self.tiles:
-            print("".join(["#" if tile.is_wall else "." for tile in row]))
+    def is_wall(self, x, y):
+        return self.tiles[y][x].is_wall
