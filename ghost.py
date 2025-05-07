@@ -21,7 +21,7 @@ class Ghost:
         elif direction == "right":
             new_x += self.speed
 
-        if not map.is_wall(new_x, new_y):
+        if not map.is_wall(int(new_x), int(new_y)):
             self.x, self.y = new_x, new_y
 
     def chase_player(self, player, map):
