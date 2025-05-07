@@ -142,7 +142,7 @@ class Game:
         self.ghost_move_counter += 1
         if self.ghost_move_counter >= 30:
             for ghost in self.ghosts:
-                ghost.move_random(self.level.map)
+                ghost.move_random(self.level.map, self.ghosts)  # Додаємо self.ghosts
             self.ghost_move_counter = 0
 
         # Збирання монет
