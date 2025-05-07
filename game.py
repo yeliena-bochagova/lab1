@@ -40,34 +40,40 @@ class Game:
         self.font = pygame.font.SysFont(None, 36)
         self.settings_open = False
 
+    import random
+
     def init_ghosts(self):
-        # Створюємо список привидів за кількістю, заданою у self.ghost_count
+        """
+        Генерує привидів у випадкових координатах, перевіряючи, що вони:
+        - Не стоять на стіні.
+        - Не розташовані поруч один з одним (мінімальна відстань 2).
+        """
         self.ghosts = []
-        for i in range(self.ghost_count):
-            # Для простоти позиціонуємо їх поблизу координати (5,5) з незначним зміщенням
-            self.ghosts.append(Ghost(5 + i, 5))
+        available_positions = []
+
+        # Шукаємо всі прохідні клітинки
+        for y in range(self.level.map.height):
+            for x in range(self.level.map.width):
+                if not self.level.map.is_wall(x, y):  # Клітинка має бути прохідною
+                    available_positions.append((x, y))
+
+        # Рандомно вибираємо позиції для привидів
+        while len(self.ghosts) < self.ghost_count and available_positions:
+            candidate = random.choice(available_positions)
+
+            # Перевіряємо, чи новий привид знаходиться не надто близько до інших
+            too_close = any(abs(candidate[0] - g.x) + abs(candidate[1] - g.y) < 2 for g in self.ghosts)
+
+            if not too_close:
+                self.ghosts.append(Ghost(candidate[0], candidate[1]))
+
+            # Видаляємо використану позицію, щоб уникнути повторень
+            available_positions.remove(candidate)
 
     def rebuild_level(self):
         """
         Перебудовує рівень, використовуючи поточне значення self.tile_size.
         Обчислює кількість клітинок за розмірами вікна, створює нову карту і викликає Level.generate_level().
-        """
-        new_width = self.screen.get_width() // self.tile_size
-        new_height = (self.screen.get_height() - TOP_MARGIN) // self.tile_size
-        self.level.map = Map(new_width, new_height)
-        self.level.coins = []
-        self.level.generate_level()
-
-    def init_ghosts(self):
-        self.ghosts = []
-        for i in range(self.ghost_count):
-            self.ghosts.append(Ghost(5 + i, 5))
-
-    def rebuild_level(self):
-        """
-        Перебудовує рівень, використовуючи поточне значення self.tile_size.
-        Обчислює кількість клітинок у сітці за розмірами вікна, створює нову карту
-        і викликає Level.generate_level().
         """
         new_width = self.screen.get_width() // self.tile_size
         new_height = (self.screen.get_height() - TOP_MARGIN) // self.tile_size
@@ -156,9 +162,9 @@ class Game:
 
     def draw(self):
         self.screen.fill((0, 0, 0))
-        # Верхня панель з рахунком (фон синій)
+        # Верхня панель з рахунком
         background_rect = pygame.Rect(0, 0, self.screen.get_width(), TOP_MARGIN)
-        pygame.draw.rect(self.screen, (0, 0, 255), background_rect)
+        pygame.draw.rect(self.screen, (59, 37, 125), background_rect)
         score_text = self.font.render(f"Score: {self.player.score}", True, (255, 255, 255))
         text_rect = score_text.get_rect(center=(self.screen.get_width() // 2, TOP_MARGIN // 2))
         self.screen.blit(score_text, text_rect)
@@ -169,7 +175,7 @@ class Game:
                 if self.level.map.tiles[y][x].is_wall:
                     pygame.draw.rect(
                         self.screen,
-                        (100, 100, 100),
+                        (59, 37, 125),
                         (x * self.tile_size, y * self.tile_size + TOP_MARGIN, self.tile_size, self.tile_size)
                     )
 
