@@ -3,8 +3,8 @@ import sys
 import random
 from player import Player
 from ghost import Ghost
-from level import Level  # Level() – конструктор без додаткових параметрів
-from map import Map  # Map(width, height) створює карту потрібного розміру
+from level import Level
+from map import Map
 
 TOP_MARGIN = 40  # Відступ для верхньої панелі (рахунок)
 
@@ -17,28 +17,48 @@ class Game:
         pygame.display.set_caption("PacMan Clone")
         self.clock = pygame.time.Clock()
 
-        # Початкові налаштування
-        self.tile_size = 60  # Чим менший tile_size, тим більше клітинок у рівні
-        self.ghost_count = 1  # Початкова кількість привидів
+        # Початкові налаштування: змінна "складність" гри
+        self.tile_size = 60  # Збільшено з 30 до 60
+        self.ghost_count = 3  # Початкова кількість привидів – 3
 
+        # Створюємо рівень і перебудовуємо його відповідно до поточного tile_size.
         self.level = Level()  # Level конструктор без параметрів
-        self.rebuild_level()  # Побудова рівня за поточними налаштуваннями
+        self.rebuild_level()  # За допомогою rebuild_level() замінюємо карту новою
 
+        # Ініціалізуємо гравця і привидів
         self.player = Player(1, 1)
         self.ghosts = []
         self.init_ghosts()
 
         self.ghost_move_counter = 0
-        self.player_move_counter = 0  # Лічильник руху гравця
-        self.running = True  # Головний цикл гри
-        self.game_over = False  # Прапорець завершення гри
+        self.player_move_counter = 0
+        self.running = True
+        self.game_over = False
+        self.win = False  # Прапорець перемоги
         self.direction = None
 
         self.font = pygame.font.SysFont(None, 36)
         self.settings_open = False
 
     def init_ghosts(self):
-        # Створюємо список привидів за кількістю ghost_count
+        # Створюємо список привидів за кількістю, заданою у self.ghost_count
+        self.ghosts = []
+        for i in range(self.ghost_count):
+            # Для простоти позиціонуємо їх поблизу координати (5,5) з незначним зміщенням
+            self.ghosts.append(Ghost(5 + i, 5))
+
+    def rebuild_level(self):
+        """
+        Перебудовує рівень, використовуючи поточне значення self.tile_size.
+        Обчислює кількість клітинок за розмірами вікна, створює нову карту і викликає Level.generate_level().
+        """
+        new_width = self.screen.get_width() // self.tile_size
+        new_height = (self.screen.get_height() - TOP_MARGIN) // self.tile_size
+        self.level.map = Map(new_width, new_height)
+        self.level.coins = []
+        self.level.generate_level()
+
+    def init_ghosts(self):
         self.ghosts = []
         for i in range(self.ghost_count):
             self.ghosts.append(Ghost(5 + i, 5))
@@ -46,28 +66,32 @@ class Game:
     def rebuild_level(self):
         """
         Перебудовує рівень, використовуючи поточне значення self.tile_size.
-        Обчислює кількість клітинок у сітці на основі розмірів вікна.
-        Заміщує self.level.map новою картою, і скидає self.level.coins.
-        Потім викликає Level.generate_level() для заповнення лабіринту.
+        Обчислює кількість клітинок у сітці за розмірами вікна, створює нову карту
+        і викликає Level.generate_level().
         """
         new_width = self.screen.get_width() // self.tile_size
         new_height = (self.screen.get_height() - TOP_MARGIN) // self.tile_size
-        # Створюємо нову карту з заданою сіткою
         self.level.map = Map(new_width, new_height)
-        # Очищаємо список монет
         self.level.coins = []
-        # Генеруємо рівень (лабіринт і монети)
         self.level.generate_level()
 
     def run(self):
         while True:
             self.handle_events()
-            if not self.game_over and not self.settings_open:
+
+            # Якщо гра активна і не у виграшному стані чи меню налаштувань – оновлюємо гру.
+            if not self.game_over and not self.win and not self.settings_open:
                 self.update()
+
             self.draw()
 
+            # Якщо гравець програв – показуємо Game Over меню.
             if self.game_over:
                 self.show_game_over_menu()
+            # Якщо гравець виграв – показуємо меню виграшу.
+            if self.win:
+                self.show_win_menu()
+
             self.clock.tick(60)
 
     def handle_events(self):
@@ -76,11 +100,11 @@ class Game:
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.KEYDOWN:
-                if not self.game_over and not self.settings_open:
+                if not self.game_over and not self.win and not self.settings_open:
                     if event.key == pygame.K_q:
                         self.show_quit_menu()
                     elif event.key == pygame.K_s:
-                        self.show_settings_menu()  # Відкриваємо меню налаштувань
+                        self.show_settings_menu()
                     elif event.key == pygame.K_UP:
                         self.direction = "up"
                     elif event.key == pygame.K_DOWN:
@@ -91,6 +115,7 @@ class Game:
                         self.direction = "right"
 
     def update(self):
+        # Рух гравця (кожні 10 кадрів)
         self.player_move_counter += 1
         if self.player_move_counter >= 10:
             if self.direction:
@@ -107,29 +132,38 @@ class Game:
                     self.player.move(self.direction, self.level.map)
             self.player_move_counter = 0
 
+        # Рух кожного привида (кожні 30 кадрів)
         self.ghost_move_counter += 1
         if self.ghost_move_counter >= 30:
             for ghost in self.ghosts:
                 ghost.move_random(self.level.map)
             self.ghost_move_counter = 0
 
+        # Збирання монет
         for coin in self.level.coins:
             if not coin.collected:
                 self.player.collect_coin(coin)
 
+        # Перевірка зіткнення гравця з привидом
         for ghost in self.ghosts:
             if self.player.x == ghost.x and self.player.y == ghost.y:
                 self.game_over = True
                 break
 
+        # Перевірка на перемогу: якщо всі монети зібрані, встановлюємо win.
+        if self.level.coins and all(coin.collected for coin in self.level.coins):
+            self.win = True
+
     def draw(self):
         self.screen.fill((0, 0, 0))
+        # Верхня панель з рахунком (фон синій)
         background_rect = pygame.Rect(0, 0, self.screen.get_width(), TOP_MARGIN)
         pygame.draw.rect(self.screen, (0, 0, 255), background_rect)
         score_text = self.font.render(f"Score: {self.player.score}", True, (255, 255, 255))
         text_rect = score_text.get_rect(center=(self.screen.get_width() // 2, TOP_MARGIN // 2))
         self.screen.blit(score_text, text_rect)
 
+        # Малювання карти: використання self.tile_size
         for y in range(self.level.map.height):
             for x in range(self.level.map.width):
                 if self.level.map.tiles[y][x].is_wall:
@@ -139,6 +173,7 @@ class Game:
                         (x * self.tile_size, y * self.tile_size + TOP_MARGIN, self.tile_size, self.tile_size)
                     )
 
+        # Малювання монет
         for coin in self.level.coins:
             if not coin.collected:
                 pygame.draw.circle(
@@ -149,19 +184,20 @@ class Game:
                     self.tile_size // 4
                 )
 
+        # Малювання гравця
         pygame.draw.rect(
             self.screen,
             (0, 255, 0),
-            (self.player.x * self.tile_size, self.player.y * self.tile_size + TOP_MARGIN,
-             self.tile_size, self.tile_size)
+            (
+            self.player.x * self.tile_size, self.player.y * self.tile_size + TOP_MARGIN, self.tile_size, self.tile_size)
         )
 
+        # Малювання всіх привидів
         for ghost in self.ghosts:
             pygame.draw.rect(
                 self.screen,
                 (255, 0, 0),
-                (ghost.x * self.tile_size, ghost.y * self.tile_size + TOP_MARGIN,
-                 self.tile_size, self.tile_size)
+                (ghost.x * self.tile_size, ghost.y * self.tile_size + TOP_MARGIN, self.tile_size, self.tile_size)
             )
 
         pygame.display.flip()
@@ -182,6 +218,7 @@ class Game:
                         sys.exit()
                     elif event.key == pygame.K_n:
                         quit_menu_open = False
+
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             self.screen.blit(overlay, (0, 0))
@@ -216,6 +253,7 @@ class Game:
                     elif event.key == pygame.K_n:
                         pygame.quit()
                         sys.exit()
+
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             self.screen.blit(overlay, (0, 0))
@@ -236,15 +274,15 @@ class Game:
 
     def show_settings_menu(self):
         """
-        Меню налаштувань (складність): зміна tile_size ("складність") через стрілки.
-        При збереженні (Y) рівень перебудовується так, щоб заповнювати весь простір.
-        Натискання N відміняє зміни.
+        Меню налаштувань (складність): зміна tile_size через UP/DOWN та ghost_count через RIGHT/LEFT.
+        Натискання Y зберігає зміни, після чого рівень перебудовується.
+        Натискання N скасовує зміни.
         """
         settings_font = pygame.font.SysFont(None, 48)
         settings_open = True
 
-        # Зберігаємо поточне значення tile_size для редагування
         current_tile_size = self.tile_size
+        current_ghost_count = self.ghost_count
 
         while settings_open:
             for event in pygame.event.get():
@@ -256,60 +294,125 @@ class Game:
                         current_tile_size += 5
                     elif event.key == pygame.K_DOWN:
                         current_tile_size = max(10, current_tile_size - 5)
+                    elif event.key == pygame.K_RIGHT:
+                        current_ghost_count += 1
+                    elif event.key == pygame.K_LEFT:
+                        current_ghost_count = max(1, current_ghost_count - 1)
                     elif event.key == pygame.K_y:
-                        # Зберігаємо нове значення
                         self.tile_size = current_tile_size
+                        self.ghost_count = current_ghost_count
                         settings_open = False
-                        # Перебудовуємо рівень за новим tile_size
                         self.rebuild_level()
                         self.restart_game_partials()
                     elif event.key == pygame.K_n:
                         settings_open = False
 
+            # Малюємо напівпрозорий фон меню
             overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
             overlay.fill((0, 0, 0, 200))
             self.screen.blit(overlay, (0, 0))
+
+            # Відмальовуємо прямокутник меню
             menu_rect = pygame.Rect(50, 150, self.screen.get_width() - 100, 300)
             pygame.draw.rect(self.screen, (0, 0, 128), menu_rect)
             pygame.draw.rect(self.screen, (255, 255, 255), menu_rect, 3)
-            title_text = settings_font.render("Difficulty Settings", True, (255, 255, 255))
-            tile_text = settings_font.render(f"Tile Size: {current_tile_size}", True, (255, 255, 255))
-            prompt_text = settings_font.render("Adjust: UP/DOWN, Save: Y, Cancel: N", True, (255, 255, 255))
-            title_rect = title_text.get_rect(center=(self.screen.get_width() // 2, 200))
-            tile_rect = tile_text.get_rect(center=(self.screen.get_width() // 2, 260))
-            prompt_rect = prompt_text.get_rect(center=(self.screen.get_width() // 2, 320))
-            self.screen.blit(title_text, title_rect)
-            self.screen.blit(tile_text, tile_rect)
-            self.screen.blit(prompt_text, prompt_rect)
+
+            # Рендеримо кожен рядок окремо
+            line1 = settings_font.render("Difficulty Settings", True, (255, 255, 255))
+            line2 = settings_font.render(f"Tile Size: {current_tile_size}", True, (255, 255, 255))
+            line3 = settings_font.render(f"Ghost Count: {current_ghost_count}", True, (255, 255, 255))
+            line4 = settings_font.render("UP/DOWN: Tile", True, (255, 255, 255))
+            line5 = settings_font.render("LEFT/RIGHT: Ghosts", True, (255, 255, 255))
+            line6 = settings_font.render("Save: Y    Cancel: N", True, (255, 255, 255))
+
+            # Обираємо координати, щоб розташувати рядки всередині меню
+            center_x = self.screen.get_width() // 2
+            # Ми розташовуємо рядки у меню між y = 170 та y = 430 (в межах прямокутника меню)
+            line1_rect = line1.get_rect(center=(center_x, 170))
+            line2_rect = line2.get_rect(center=(center_x, 220))
+            line3_rect = line3.get_rect(center=(center_x, 270))
+            line4_rect = line4.get_rect(center=(center_x, 320))
+            line5_rect = line5.get_rect(center=(center_x, 370))
+            line6_rect = line6.get_rect(center=(center_x, 420))
+
+            self.screen.blit(line1, line1_rect)
+            self.screen.blit(line2, line2_rect)
+            self.screen.blit(line3, line3_rect)
+            self.screen.blit(line4, line4_rect)
+            self.screen.blit(line5, line5_rect)
+            self.screen.blit(line6, line6_rect)
+
             pygame.display.flip()
             self.clock.tick(30)
 
     def restart_game_partials(self):
         """
-        Перезапускаємо гру частково (тобто скидаємо позиції гравця/привидів, але залишаємо рахунок).
-        Після зміни налаштувань рівень перебудовується за новими параметрами.
+        Перезапускаємо гру, скинувши позиції гравця та привидів, але залишаємо рахунок.
+        Перебудовуємо рівень за новими параметрами.
         """
         self.rebuild_level()
         self.player = Player(1, 1)
         self.init_ghosts()
         self.game_over = False
+        self.win = False
         self.player_move_counter = 0
         self.ghost_move_counter = 0
         self.direction = None
 
     def restart_game(self):
         """
-        Повний перезапуск гри після поразки: рівень, позиції та рахунок можна скидати,
-        або залишати складність поточною.
+        Повний перезапуск гри після поразки: скидання рівня, позицій та (за бажанням) рахунку.
+        Складність залишається незмінною.
         """
         self.rebuild_level()
         self.player = Player(1, 1)
         self.init_ghosts()
         self.game_over = False
+        self.win = False
         self.player_move_counter = 0
         self.ghost_move_counter = 0
         self.direction = None
-        # Якщо бажаєте скидати рахунок, додайте тут self.player.score = 0
+        # Якщо хочете скидати рахунок, додайте тут: self.player.score = 0
+
+    def show_win_menu(self):
+        """
+        Меню, яке з’являється, коли гравець зібрав усі монети:
+        "You Win!", відображення рахунку та запит "Try again? (Y/N)".
+        Якщо Y – гра перезапускається, якщо N – гра завершується.
+        """
+        menu_font = pygame.font.SysFont(None, 48)
+        win_menu_open = True
+
+        while win_menu_open:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_y:
+                        win_menu_open = False
+                        self.restart_game()
+                    elif event.key == pygame.K_n:
+                        pygame.quit()
+                        sys.exit()
+
+            overlay = pygame.Surface(self.screen.get_size(), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 200))
+            self.screen.blit(overlay, (0, 0))
+            menu_rect = pygame.Rect(50, 150, self.screen.get_width() - 100, 300)
+            pygame.draw.rect(self.screen, (0, 128, 0), menu_rect)  # Зелений фон для перемоги
+            pygame.draw.rect(self.screen, (255, 255, 255), menu_rect, 3)
+            win_text = menu_font.render("You Win!", True, (255, 255, 255))
+            score_text = menu_font.render(f"Score: {self.player.score}", True, (255, 255, 255))
+            prompt_text = menu_font.render("Try again? (Y/N)", True, (255, 255, 255))
+            win_rect = win_text.get_rect(center=(self.screen.get_width() // 2, 200))
+            score_rect = score_text.get_rect(center=(self.screen.get_width() // 2, 260))
+            prompt_rect = prompt_text.get_rect(center=(self.screen.get_width() // 2, 320))
+            self.screen.blit(win_text, win_rect)
+            self.screen.blit(score_text, score_rect)
+            self.screen.blit(prompt_text, prompt_rect)
+            pygame.display.flip()
+            self.clock.tick(30)
 
 
 if __name__ == "__main__":
