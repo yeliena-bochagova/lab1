@@ -22,4 +22,9 @@ class Map:
                 self.tiles.append(row)
 
     def is_wall(self, x, y):
+        x = int(x)
+        y = int(y)
+        # Перевіряємо, чи координати знаходяться в межах карти
+        if x < 0 or y < 0 or x >= self.width or y >= self.height:
+            return True
         return self.tiles[y][x].is_wall

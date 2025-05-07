@@ -2,30 +2,33 @@ import random
 
 class Ghost:
     def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.speed = 0.8  # Трохи повільніше за гравця
+        self.x = int(x)
+        self.y = int(y)
+        # Якщо потрібна ідея "швидкості", замість дробового значення
+        # використовуйте логіку затримки руху (напр., в Game)
+        self.speed = 1
 
     def move_random(self, map):
-        """Випадковий рух привида."""
+        """Випадковий рух привида по сітці."""
         directions = ["up", "down", "left", "right"]
         direction = random.choice(directions)
 
+        # Використовуємо дискретний рух: зміщення цілим числом 1
         new_x, new_y = self.x, self.y
         if direction == "up":
-            new_y -= self.speed
+            new_y -= 1
         elif direction == "down":
-            new_y += self.speed
+            new_y += 1
         elif direction == "left":
-            new_x -= self.speed
+            new_x -= 1
         elif direction == "right":
-            new_x += self.speed
+            new_x += 1
 
-        if not map.is_wall(int(new_x), int(new_y)):
+        if not map.is_wall(new_x, new_y):
             self.x, self.y = new_x, new_y
 
     def chase_player(self, player, map):
-        """Привид рухається до гравця (простий алгоритм)."""
+        """Привид рухається до гравця (простий алгоритм), завжди цілочисельним кроком."""
         dx = player.x - self.x
         dy = player.y - self.y
 
