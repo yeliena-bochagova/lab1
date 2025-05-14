@@ -26,6 +26,6 @@ class Player:
         """Збір монети, якщо гравець на ній."""
         if self.x == coin.x and self.y == coin.y and not coin.collected:
             coin.collected = True
-            self.score += 10
+            self.score += 1
             return True
         return False
