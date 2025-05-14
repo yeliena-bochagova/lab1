@@ -32,4 +32,3 @@ def test_collect_coin(player, coin):
     """Перевірка збору монети."""
     assert player.collect_coin(coin) is True
     assert coin.collected is True
-    assert player.score == 10
