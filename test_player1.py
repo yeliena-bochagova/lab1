@@ -21,6 +21,5 @@ def test_player_move(player, dx, dy):
 def test_player_collect_coin(player, coin):
     """Перевірка збору монети."""
     player.x, player.y = coin.x, coin.y  # Гравець на позиції монети
-    coin_mock = Mock()
-    coin_mock.collect.return_value = True
-    assert coin_mock.collect() is True
+    assert player.collect_coin(coin) is True  # Перевіряємо, що монета зібрана
+    assert coin.collected is True  # Перевіряємо, що монета позначена як зібрана
