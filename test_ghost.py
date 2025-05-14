@@ -1,12 +1,19 @@
 import pytest
-from game import Ghost
+from ghost import Ghost
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def ghost():
-    return Ghost(x=5, y=5)
+    """Фікстура для створення привида."""
+    return Ghost(3, 3)
 
-def test_ghost_move(ghost):
-    """Перевірка, чи змінюється координата привида після виклику move."""
-    initial_x, initial_y = ghost.x, ghost.y
-    ghost.move()
-    assert (ghost.x, ghost.y) != (initial_x, initial_y)
+def test_move_random(ghost):
+    """Перевірка, чи змінюється координата після виклику move_random."""
+    map_mock = MagicMock()
+    map_mock.is_wall.return_value = False  # Мок стін
+    ghosts = [ghost]
+
+    old_x, old_y = ghost.x, ghost.y
+    ghost.move_random(map_mock, ghosts)
+
+    assert (ghost.x, ghost.y) != (old_x, old_y)
