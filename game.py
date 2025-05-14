@@ -40,7 +40,6 @@ class Game:
         self.font = pygame.font.SysFont(None, 36)
         self.settings_open = False
 
-    import random
 
     def init_ghosts(self):
         """
@@ -82,29 +81,23 @@ class Game:
         self.level.generate_level()
 
     def run(self):
-        while True:
+        self.running = True  # Забезпечуємо, що running встановлено в True на початку
+        while self.running:
             self.handle_events()
-
-            # Якщо гра активна і не у виграшному стані чи меню налаштувань – оновлюємо гру.
             if not self.game_over and not self.win and not self.settings_open:
                 self.update()
-
             self.draw()
-
-            # Якщо гравець програв – показуємо Game Over меню.
             if self.game_over:
                 self.show_game_over_menu()
-            # Якщо гравець виграв – показуємо меню виграшу.
             if self.win:
                 self.show_win_menu()
-
             self.clock.tick(60)
 
     def handle_events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
-                sys.exit()
+                self.running = False
             elif event.type == pygame.KEYDOWN:
                 if not self.game_over and not self.win and not self.settings_open:
                     if event.key == pygame.K_q:
