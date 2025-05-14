@@ -128,7 +128,6 @@ def test_restart_game(game_instance):
     assert game_instance.game_over is False, "Після restart_game прапор game_over має бути False"
     # Якщо логіка передбачає скидання рахунку, перевірте це відповідно.
 
-@pytest.mark.slow
 def test_game_loop_execution(game_instance):
     # Патчимо методи меню, щоб уникнути виклику sys.exit()
     game_instance.show_game_over_menu = lambda: None
